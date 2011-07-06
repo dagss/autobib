@@ -16,7 +16,7 @@ def handle_sciencedirect(br, doi):
         raise Exception("Did not succeed in retrieving BIBTEX for %s" % doi)
     return bibtex
 
-def resolve_doi(doi):
+def fetch_bibtex_of_doi(doi):
     if not doi.startswith('doi:'):
         raise ValueError("Invalid DOI URI, lacks doi: prefix")
     url = 'http://dx.doi.org/' + doi[4:]
@@ -30,7 +30,7 @@ def resolve_doi(doi):
         raise ValueError("Does not know how to handle %s" % response.geturl())
     
 def test():
-    print resolve_doi('doi:10.1016/j.jcp.2010.05.004')
+    print fetch_bibtex_of_doi('doi:10.1016/j.jcp.2010.05.004')
 
 if __name__ == '__main__':
     test()
