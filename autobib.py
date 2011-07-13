@@ -1,11 +1,12 @@
-
+import re
+import sys
 from StringIO import StringIO
 from pybtex.database.input import bibtex
 
-from resolve_citation import fetch_bibtex_of_doi
+from resolve_citation import CitationResolver
 
 def fetch_reference(uri):
-    bibtex_str = fetch_bibtex_of_doi(uri)
+    bibtex_str = CitationResolver().fetch_bibtex_of_doi(uri)
     parser = bibtex.Parser()
     bib_data = parser.parse_stream(StringIO(bibtex_str))
     if len(bib_data.entries) != 1:
@@ -15,8 +16,8 @@ def fetch_reference(uri):
 
 class ApjFormatter(object):
     def format_author(self, author):
-        print author
-        x = author.last()
+        x = []
+        x.extend(author.last())
         x.extend(author.first(abbr=True))
         x.extend(author.middle(abbr=True))
         return ', '.join(x)
@@ -24,18 +25,53 @@ class ApjFormatter(object):
 def format_citation_apj(uri):
     entry = fetch_reference(uri)
     formatter = ApjFormatter()
-    authorpart = [formatter.format_author(a) for a in entry.persons['author']]
-    assert len(authorpart) == 1
-    authorpart = ','.join(authorpart)
+    authorlist = [formatter.format_author(a) for a in entry.persons['author']]
+    assert len(authorlist) > 0
+    if len(authorlist) > 1:
+        authorlist[-1] = '\& %s' % authorlist[-1]
+    authorlist = ', '.join(authorlist)
     fields = entry.fields
-    journal = fields['journal']
-    return ('{authorpart} {fields[year]} {journal}, '
-            '{fields[volume]}, {fields[number]}').format(**locals())
+    lastname = entry.persons['author'][0].last()[0]
+    return ('\\bibitem[{lastname}({fields[year]})]{{{uri}}}\n'
+            '  {authorlist} {fields[year]} {fields[journal]}, '
+            '{fields[volume]}, {fields[number]}\n').format(**locals())
     
-        
+
+DOI_RE = re.compile(r'doi:[^,}]*')
+AUTOBIB_SECTION_RE = re.compile(r'^%START AUTOBIB$.*^%STOP AUTOBIB$',
+                                re.MULTILINE | re.DOTALL)
+
+
+def transform_tex(tex):
+    # Scan for journal references
+    references = DOI_RE.findall(tex)
+
+    formatted_references = set([format_citation_apj(uri)
+                                for uri in references])
+    
+    refsection = '\n'.join(formatted_references)
+    
+    tex = AUTOBIB_SECTION_RE.sub('%START AUTOBIB\n' +
+                                 refsection.replace('\\', '\\\\') +
+                                 '%STOP AUTOBIB',
+                                 tex)
+    return tex
 
 def test():
-    print format_citation_apj('doi:10.1016/j.jcp.2010.05.004')
+    print format_citation_apj('doi:10.1016/j.acha.2009.08.005')
+    #print format_citation_apj('doi:10.1016/j.jcp.2010.05.004')
 
 if __name__ == '__main__':
-    test()
+    import argparse
+    parser = argparse.ArgumentParser()
+    parser.add_argument('texname', default=None)
+    args = parser.parse_args()
+    with file(args.texname) as f:
+        tex = f.read()
+    tex = transform_tex(tex)
+    with file(args.texname, 'w') as f:
+        f.write(tex)
+
+
+
+
