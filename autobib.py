@@ -22,7 +22,7 @@ class ApjFormatter(object):
         x.extend(author.middle(abbr=True))
         return ', '.join(x)
 
-def format_citation_apj(uri):
+def format_citation_apj(uri, tag):
     entry = fetch_reference(uri)
     formatter = ApjFormatter()
     authorlist = [formatter.format_author(a) for a in entry.persons['author']]
@@ -32,28 +32,49 @@ def format_citation_apj(uri):
     authorlist = ', '.join(authorlist)
     fields = entry.fields
     lastname = entry.persons['author'][0].last()[0]
-    return ('\\bibitem[{lastname}({fields[year]})]{{{uri}}}\n'
+    return ('\\bibitem[{lastname}({fields[year]})]{{{tag}}}\n'
             '  {authorlist} {fields[year]} {fields[journal]}, '
             '{fields[volume]}, {fields[number]}\n').format(**locals())
     
 
-DOI_RE = re.compile(r'doi:[^,}]*')
-AUTOBIB_SECTION_RE = re.compile(r'^%START AUTOBIB$.*^%STOP AUTOBIB$',
+CITES_RE = re.compile(r'\\cite\S*{([^}]+)}', re.DOTALL)
+#DOI_RE = re.compile(r'\cite\S*{doi:[^,}]*')
+AUTOBIB_SECTION_RE = re.compile(r'^%autobib start$.*^%autobib stop$',
                                 re.MULTILINE | re.DOTALL)
-
+AUTOBIB_CONFIG_RE = re.compile(r'^%autobib\s+(.*)$', re.MULTILINE)
 
 def transform_tex(tex):
-    # Scan for journal references
-    references = DOI_RE.findall(tex)
+    # Parse settings
+    aliases = {}
+    for expr in AUTOBIB_CONFIG_RE.findall(tex):
+        expr = expr.strip()
+        if expr in ('start', 'stop'):
+            pass
+        elif expr.startswith('let '):
+            alias, uri = expr[4:].split('=')
+            aliases[alias] = uri
+        else:
+            raise Exception("Invalid setting: %%autobib %s" % expr)
+    reverse_aliases = dict((value, key) for key, value in aliases.iteritems())
 
-    formatted_references = set([format_citation_apj(uri)
-                                for uri in references])
+    # Scan for journal references
+    references = aliases.values()
+    references.extend(sum([expr.split(',') for expr in CITES_RE.findall(tex)],
+                          []))
+    references = [ref.strip() for ref in references
+                  if ref.startswith('doi:')]
+    references = set(references)
+    def get_tag(uri):
+        return reverse_aliases.get(uri, uri)
+    formatted_references = [format_citation_apj(uri, get_tag(uri))
+                            for uri in references]
     
     refsection = '\n'.join(formatted_references)
-    
-    tex = AUTOBIB_SECTION_RE.sub('%START AUTOBIB\n' +
+
+    print refsection
+    tex = AUTOBIB_SECTION_RE.sub('%autobib start\n' +
                                  refsection.replace('\\', '\\\\') +
-                                 '%STOP AUTOBIB',
+                                 '%autobib stop',
                                  tex)
     return tex
 
