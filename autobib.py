@@ -44,7 +44,8 @@ def format_citation_apj(uri, tag):
     authorlist = ', '.join(authorlist)
     fields = entry.fields
     lastname = entry.persons['author'][0].last()[0]
-    return ('\\bibitem[{lastname}({fields[year]})]{{{tag}}}\n'
+    etal = ' et al.' if len(authorlist) > 1 else ''
+    return ('\\bibitem[{lastname}{etal}({fields[year]})]{{{tag}}}\n'
             '  {authorlist} {fields[year]} {fields[journal]}, '
             '{fields[volume]}, {fields[number]}\n').format(**locals())
     
