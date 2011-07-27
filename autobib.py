@@ -7,9 +7,15 @@ from pprint import pprint
 from resolve_citation import CitationResolver
 
 ISSN_DB = {
-    '10648275': 'SIAM J. Sci. Comput.'
+    '10648275': 'SIAM J. Sci. Comput.',
+    '00361429': 'SIAM J. Numer. Anal.'    
 }
 
+def issn_to_journal(issn):
+    try:
+        return ISSN_DB[issn]
+    except KeyError:
+        raise NotImplementedError('Please register ISSN %s in ISSN_DB' % issn)
 
 def fetch_reference(uri):
     bibtex_str = CitationResolver().fetch_bibtex_of_doi(uri)
@@ -22,7 +28,11 @@ def fetch_reference(uri):
 
 def massage_bibtex_entry(entry):
     if 'journal' not in entry.fields:
-        entry.fields['journal'] = ISSN_DB[entry.fields['issn']]
+        try:
+            entry.fields['journal'] = issn_to_journal(entry.fields['issn'])
+        except NotImplementedError:
+            pprint(entry.fields)
+            raise
     return entry
 
 class ApjFormatter(object):
