@@ -2,8 +2,14 @@ import re
 import sys
 from StringIO import StringIO
 from pybtex.database.input import bibtex
+from pprint import pprint
 
 from resolve_citation import CitationResolver
+
+ISSN_DB = {
+    '10648275': 'SIAM J. Sci. Comput.'
+}
+
 
 def fetch_reference(uri):
     bibtex_str = CitationResolver().fetch_bibtex_of_doi(uri)
@@ -12,6 +18,11 @@ def fetch_reference(uri):
     if len(bib_data.entries) != 1:
         raise AssertionError()
     entry = bib_data.entries.values()[0]
+    return entry
+
+def massage_bibtex_entry(entry):
+    if 'journal' not in entry.fields:
+        entry.fields['journal'] = ISSN_DB[entry.fields['issn']]
     return entry
 
 class ApjFormatter(object):
@@ -24,6 +35,7 @@ class ApjFormatter(object):
 
 def format_citation_apj(uri, tag):
     entry = fetch_reference(uri)
+    entry = massage_bibtex_entry(entry)
     formatter = ApjFormatter()
     authorlist = [formatter.format_author(a) for a in entry.persons['author']]
     assert len(authorlist) > 0
