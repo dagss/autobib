@@ -39,21 +39,30 @@ def handle_siam(br, doi, response):
     assert_bibtex_contains('@article', bibtex)
     return bibtex
 
-def fetch_bibtex_of_doi(doi):
-    if not doi.startswith('doi:'):
-        raise ValueError("Invalid DOI URI, lacks doi: prefix")
-    url = 'http://dx.doi.org/' + doi[4:]
+def fetch_bibtex_of_doi(uri):
+    url = 'http://dx.doi.org/' + uri[len('doi:'):]
     br = mechanize.Browser()
     br.set_handle_robots(False)
     br.addheaders = FAKE_USER_AGENT
     response = br.open(url)
     redirected_url = response.geturl()
     if 'sciencedirect.com' in redirected_url:
-        return handle_sciencedirect(br, doi, response)
+        return handle_sciencedirect(br, uri, response)
     elif 'siam.org' in redirected_url:
-        return handle_siam(br, doi, response)
+        return handle_siam(br, uri, response)
     else:
         raise NotImplementedError("Does not know how to handle %s" % response.geturl())
+
+def fetch_bibtex_of_arxiv(uri):
+    raise NotImplementedError()
+
+def fetch_bibtex_of_uri(uri):
+    if uri.startswith('doi:'):
+        return fetch_bibtex_of_doi(uri)
+    elif uri.startswith('arXiv:'):
+        return fetch_bibtex_of_arxiv(uri)
+    else:
+        raise NotImplementedError("Does not know how to handle URI scheme of %s" % uri)
 
 class CitationResolver():
     def __init__(self, cachedir=None):
