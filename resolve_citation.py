@@ -92,10 +92,12 @@ class CitationResolver():
 
     
 
+
     
 def test():
-    print fetch_bibtex_of_doi('doi:10.1016/j.jcp.2010.05.004')
-    print fetch_bibtex_of_doi('doi:10.1137/030602678')
+#    print fetch_bibtex_of_doi('doi:10.1016/j.jcp.2010.05.004')
+#    print fetch_bibtex_of_doi('doi:10.1137/030602678')
+    print fetch_bibtex_of_uri('doi:10.1051/0004-6361/201015906') #'arxiv:1010.2084'
 
 if __name__ == '__main__':
     test()
