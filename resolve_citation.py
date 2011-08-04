@@ -49,6 +49,38 @@ def scrape_siam(br, doi, response):
     assert_bibtex_contains('@article', bibtex)
     return bibtex
 
+@scraper('ieeexplore.ieee.org')
+def scrape_ieee(br, uri, response):
+    html = response.read()
+    m = re.search(r"arnumber=([0-9]+)", html)
+    if m is None:
+        raise ScrapingBrokenError()
+    article_id = m.group(1)
+    post_data = {'recordIds': article_id,
+                 'fromPageName' : 'abstract',
+                 'citations-format' : 'citation-only',
+                 'download-format' : 'download-bibtex',
+                 'x' : '63',
+                 'y' : '10'}
+    f = urllib2.urlopen("http://ieeexplore.ieee.org/xpl/downloadCitations",
+                        data=urllib.urlencode(post_data))
+    try:
+        bibtex = f.read()
+    finally:
+        f.close()
+    1/0
+    return bibtex
+
+@scraper('springerlink.com')
+def scrape_springer(br, uri, response):
+    response = br.follow_link(text_regex="Export Citation")
+    br.select_form('aspnetForm')
+    br['ctl00$ContentPrimary$ctl00$ctl00$CitationManagerDropDownList'] = ['BibTex']
+    response = br.submit('ctl00$ContentPrimary$ctl00$ctl00$ExportCitationButton')
+    bibtex = response.read()
+    assert_bibtex_contains('@article', bibtex)
+    return bibtex
+
 def fetch_bibtex_of_doi(uri):
     url = 'http://dx.doi.org/' + uri[len('doi:'):]
     br = mechanize.Browser()
@@ -106,7 +138,9 @@ class CitationResolver():
 def test():
 #    print fetch_bibtex_of_doi('doi:10.1016/j.jcp.2010.05.004')
 #    print fetch_bibtex_of_doi('doi:10.1137/030602678')
-    print fetch_bibtex_of_uri('doi:10.1051/0004-6361/201015906') #'arxiv:1010.2084'
+#    print fetch_bibtex_of_uri('doi:10.1051/0004-6361/201015906') #'arxiv:1010.2084'
+    print fetch_bibtex_of_uri('doi:10.1007/s00041-003-0018-9')#10.1109/MCSE.2010.118')
+
 
 if __name__ == '__main__':
     test()
