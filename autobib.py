@@ -33,6 +33,8 @@ def massage_bibtex_entry(entry):
         except NotImplementedError:
             pprint(entry.fields)
             raise
+    if 'number' not in entry.fields:
+        entry.fields['number'] = entry.fields['issue']
     return entry
 
 class ApjFormatter(object):
