@@ -2,6 +2,8 @@ import mechanize
 import os
 import re
 import errno
+import urllib
+import urllib2
 
 FAKE_USER_AGENT = [('User-agent', 'Mozilla/5.0 (X11; U; Linux i686; en-US; '
                     'rv:1.9.0.1) Gecko/2008071615 Fedora/3.0.1-1.fc9 Firefox/3.0.1')]
@@ -11,12 +13,19 @@ FAKE_USER_AGENT = [('User-agent', 'Mozilla/5.0 (X11; U; Linux i686; en-US; '
 class ScrapingBrokenError(Exception):
     pass
 
+_scrapers = {}
+def scraper(uripart):
+    def decorator(func):
+        _scrapers[uripart] = func
+        return func
+    return decorator
+
 def assert_bibtex_contains(sub, whole):
     if sub not in whole:
         raise ScrapingBrokenError("Did not succeed in retrieving BIBTEX for %s" % doi)
     
-
-def handle_sciencedirect(br, doi, response):
+@scraper('sciencedirect.com')
+def scrape_sciencedirect(br, doi, response):
     response = br.follow_link(text_regex="Export citation")
     br.select_form('exportCite')
     br['citation-type'] = ['BIBTEX']
@@ -25,7 +34,8 @@ def handle_sciencedirect(br, doi, response):
     assert_bibtex_contains('@article', bibtex)
     return bibtex
 
-def handle_siam(br, doi, response):
+@scraper('siam.org')
+def scrape_siam(br, doi, response):
     # Uses Javascript to present the link... we grep the HTML for an ID
     # to embed in an URL. FRAGILE!
     html = response.read()
@@ -46,10 +56,9 @@ def fetch_bibtex_of_doi(uri):
     br.addheaders = FAKE_USER_AGENT
     response = br.open(url)
     redirected_url = response.geturl()
-    if 'sciencedirect.com' in redirected_url:
-        return handle_sciencedirect(br, uri, response)
-    elif 'siam.org' in redirected_url:
-        return handle_siam(br, uri, response)
+    for key, func in _scrapers.iteritems():
+        if key in redirected_url:
+            return func(br, uri, response)
     else:
         raise NotImplementedError("Does not know how to handle %s" % response.geturl())
 
