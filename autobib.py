@@ -87,7 +87,7 @@ def transform_tex(tex):
     references.extend(sum([expr.split(',') for expr in CITES_RE.findall(tex)],
                           []))
     references = [ref.strip() for ref in references
-                  if ref.startswith('doi:')]
+                  if ref.strip().startswith('doi:')]
     references = set(references)
     def get_tag(uri):
         return reverse_aliases.get(uri, uri)
