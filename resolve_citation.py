@@ -115,7 +115,7 @@ class CitationResolver():
         if not doi.startswith('doi:'):
             raise ValueError("Invalid DOI URI, lacks doi: prefix")
         path = os.path.join(self.cachedir,
-                            doi[4:].replace('/', os.path.pathsep).replace(':', '_'),
+                            doi[4:].replace(':', '_'),
                             'bibtex.txt')
         if not os.path.exists(path):
             bibtex = fetch_bibtex_of_doi(doi)

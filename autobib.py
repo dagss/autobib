@@ -68,7 +68,7 @@ AUTOBIB_SECTION_RE = re.compile(r'^%autobib start$.*^%autobib stop$',
                                 re.MULTILINE | re.DOTALL)
 AUTOBIB_CONFIG_RE = re.compile(r'^%autobib\s+(.*)$', re.MULTILINE)
 
-def transform_tex(tex):
+def transform_tex(tex, logger):
     # Parse settings
     aliases = {}
     for expr in AUTOBIB_CONFIG_RE.findall(tex):
@@ -89,14 +89,36 @@ def transform_tex(tex):
     references = [ref.strip() for ref in references
                   if ref.strip().startswith('doi:')]
     references = set(references)
-    def get_tag(uri):
-        return reverse_aliases.get(uri, uri)
-    formatted_references = [format_citation_apj(uri, get_tag(uri))
-                            for uri in references]
+
+    citation_replacements = []
+    formatted_references = []
+    for uri in references:
+        # Patch references with invalid characters in them
+        if uri.startswith('doi:10.1016/S0377'):
+            tag = uri
+            if not re.match(r'doi:10.1016/S0377-\d{4}\(?\d\d\)?\d{5}-\d', uri):
+                raise ValueError('Unexpected URI for domain doi:10.1016/S0377: %s' % uri)
+            if '(' in uri:
+                logger.info('Patching citation: Removing paranthesis in %s' % uri)
+                tag = uri.replace('(', '').replace(')', '')
+                citation_replacements.append((uri, tag))
+            else:
+                # The uri was already patched&replaced in a previous scan, reinsert (
+                i = len('doi:10.1016/S0377-0000')
+                j = 2
+                uri = '%s(%s)%s' % (uri[:i], uri[i:i + j], uri[i + j:])
+        else:
+            tag = reverse_aliases.get(uri, uri)
+        # Make references
+        formatted_references.append(format_citation_apj(uri, tag))
+
+    # Do citation replacements
+    for old, new in citation_replacements:
+        tex = tex.replace(old, new)
+
+    # Insert references in tex
     
     refsection = '\n'.join(formatted_references)
-
-    print refsection
     tex = AUTOBIB_SECTION_RE.sub('%autobib start\n' +
                                  refsection.replace('\\', '\\\\') +
                                  '%autobib stop',
@@ -109,12 +131,16 @@ def test():
 
 if __name__ == '__main__':
     import argparse
+    import logging
+    logging.basicConfig()
+    logger = logging.getLogger()
+    logger.setLevel(logging.INFO)
     parser = argparse.ArgumentParser()
     parser.add_argument('texname', default=None)
     args = parser.parse_args()
     with file(args.texname) as f:
         tex = f.read()
-    tex = transform_tex(tex)
+    tex = transform_tex(tex, logger)
     with file(args.texname, 'w') as f:
         f.write(tex)
 
