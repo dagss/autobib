@@ -123,7 +123,13 @@ def transform_tex(tex, logger):
         else:
             tag = reverse_aliases.get(uri, uri)
         # Make references
-        formatted_references.append(format_citation_apj(uri, tag))
+        try:
+            citation = format_citation_apj(uri, tag)
+        except NotImplementedError, e:
+            print e
+            pass
+        else:
+            formatted_references.append(citation)
 
     # Do citation replacements
     for old, new in citation_replacements:
