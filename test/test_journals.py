@@ -5,5 +5,7 @@ from resolve_citation import *
 
 def test_AA():
     bibtex = fetch_bibtex_of_uri('doi:10.1051/0004-6361/201015906')
-    ok_('Libphst' in bibtex and 'Reinecke' in bibtex)
+    print bibtex
+    ok_('Libpsht' in bibtex)
+    ok_('Reinecke' in bibtex)
 
