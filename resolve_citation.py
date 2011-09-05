@@ -22,7 +22,7 @@ def scraper(uripart):
 
 def assert_bibtex_contains(sub, whole):
     if sub not in whole:
-        raise ScrapingBrokenError("Did not succeed in retrieving BIBTEX for %s" % doi)
+        raise ScrapingBrokenError("Did not succeed in retrieving BIBTEX")
     
 @scraper('sciencedirect.com')
 def scrape_sciencedirect(br, doi, response):
@@ -81,6 +81,23 @@ def scrape_springer(br, uri, response):
     assert_bibtex_contains('@article', bibtex)
     return bibtex
 
+@scraper('aanda.org')
+def scrape_AA(br, uri, response):
+    assert uri.startswith('doi:')
+    querydict = dict(
+        option='com_makeref',
+        task='output',
+        type='bibtex',
+        doi=uri[4:])
+    querystr = urllib.urlencode(querydict)
+    f = urllib2.urlopen("http://www.aanda.org/index.php?" + querystr)
+    try:
+        bibtex = f.read()
+    finally:
+        f.close()
+    assert_bibtex_contains('@article', bibtex)
+    return bibtex
+
 def fetch_bibtex_of_doi(uri):
     url = 'http://dx.doi.org/' + uri[len('doi:'):]
     br = mechanize.Browser()
@@ -135,12 +152,12 @@ class CitationResolver():
 
 
     
-def test():
+#def test():
 #    print fetch_bibtex_of_doi('doi:10.1016/j.jcp.2010.05.004')
 #    print fetch_bibtex_of_doi('doi:10.1137/030602678')
 #    print fetch_bibtex_of_uri('doi:10.1051/0004-6361/201015906') #'arxiv:1010.2084'
-    print fetch_bibtex_of_uri('doi:10.1007/s00041-003-0018-9')#10.1109/MCSE.2010.118')
+#    print fetch_bibtex_of_uri('doi:10.1007/s00041-003-0018-9')#10.1109/MCSE.2010.118')
 
 
-if __name__ == '__main__':
-    test()
+#if __name__ == '__main__':
+#    test()
