@@ -19,12 +19,19 @@ def issn_to_journal(issn):
 
 def fetch_reference(uri):
     bibtex_str = CitationResolver().fetch_bibtex_of_doi(uri)
+    bibtex_str = massage_bibtex_string(bibtex_str)
     parser = bibtex.Parser()
     bib_data = parser.parse_stream(StringIO(bibtex_str))
     if len(bib_data.entries) != 1:
         raise AssertionError()
     entry = bib_data.entries.values()[0]
     return entry
+
+def massage_bibtex_string(bibtex):
+    if 'journal = {A\\&A}' in bibtex:
+        # TODO: Only on author field?
+        bibtex = bibtex.replace('{{', '{').replace('}}', '}')
+    return bibtex
 
 def massage_bibtex_entry(entry):
     if 'journal' not in entry.fields:
@@ -33,6 +40,11 @@ def massage_bibtex_entry(entry):
         except NotImplementedError:
             pprint(entry.fields)
             raise
+    if entry.fields['journal'] == 'A\\&A':
+        entry.fields['number'] = entry.fields['pages']
+        if len(entry.persons['author']) > 1:
+            raise NotImplementedError(
+                'Please fix massage_bibtex_string for more than one author')
     if 'number' not in entry.fields:
         entry.fields['number'] = entry.fields['issue']
     return entry
