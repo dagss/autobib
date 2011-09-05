@@ -51,14 +51,15 @@ def format_citation_apj(uri, tag):
     formatter = ApjFormatter()
     authorlist = [formatter.format_author(a) for a in entry.persons['author']]
     assert len(authorlist) > 0
+    many_authors = len(authorlist) > 1
     if len(authorlist) > 1:
         authorlist[-1] = '\& %s' % authorlist[-1]
-    authorlist = ', '.join(authorlist)
+    authorlist_str = ', '.join(authorlist)
     fields = entry.fields
     lastname = entry.persons['author'][0].last()[0]
-    etal = ' et al.' if len(authorlist) > 1 else ''
+    etal = ' et al.' if many_authors else ''
     return ('\\bibitem[{lastname}{etal}({fields[year]})]{{{tag}}}\n'
-            '  {authorlist} {fields[year]} {fields[journal]}, '
+            '  {authorlist_str} {fields[year]} {fields[journal]}, '
             '{fields[volume]}, {fields[number]}\n').format(**locals())
     
 
