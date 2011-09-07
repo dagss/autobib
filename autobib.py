@@ -70,9 +70,10 @@ def format_citation_apj(uri, tag):
     fields = entry.fields
     lastname = entry.persons['author'][0].last()[0]
     etal = ' et al.' if many_authors else ''
-    return ('\\bibitem[{lastname}{etal}({fields[year]})]{{{tag}}}\n'
-            '  {authorlist_str} {fields[year]} {fields[journal]}, '
-            '{fields[volume]}, {fields[number]}\n').format(**locals())
+    sort_key = authorlist_str
+    return (sort_key, ('\\bibitem[{lastname}{etal}({fields[year]})]{{{tag}}}\n'
+             '  {authorlist_str} {fields[year]} {fields[journal]}, '
+             '{fields[volume]}, {fields[number]}\n').format(**locals()))
     
 
 CITES_RE = re.compile(r'\\cite\S*{([^}]+)}', re.DOTALL)
@@ -124,20 +125,22 @@ def transform_tex(tex, logger):
             tag = reverse_aliases.get(uri, uri)
         # Make references
         try:
-            citation = format_citation_apj(uri, tag)
+            sort_key, citation = format_citation_apj(uri, tag)
         except NotImplementedError, e:
             print e
             pass
         else:
-            formatted_references.append(citation)
+            formatted_references.append((sort_key, citation))
 
+    formatted_references.sort()
+    
     # Do citation replacements
     for old, new in citation_replacements:
         tex = tex.replace(old, new)
 
     # Insert references in tex
-    
-    refsection = '\n'.join(formatted_references)
+    refsection = '\n'.join(text for sort, text in formatted_references)
+    print refsection
     tex = AUTOBIB_SECTION_RE.sub('%autobib start\n' +
                                  refsection.replace('\\', '\\\\') +
                                  '%autobib stop',
