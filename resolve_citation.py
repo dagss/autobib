@@ -23,7 +23,7 @@ def scraper(uripart):
 def assert_bibtex_contains(sub, whole):
     if sub not in whole:
         raise ScrapingBrokenError("Did not succeed in retrieving BIBTEX")
-    
+
 @scraper('sciencedirect.com')
 def scrape_sciencedirect(br, doi, response):
     response = br.follow_link(text_regex="Export citation")
@@ -156,7 +156,7 @@ class CitationResolver():
                 f.write(bibtex)
         else:
             with file(path) as f:
-                bibtex = f.read()
+                bibtex = f.read().decode('utf-8')
         return bibtex
 
     

@@ -1,3 +1,5 @@
+#encoding: utf-8
+
 import re
 import sys
 from StringIO import StringIO
@@ -139,11 +141,10 @@ def transform_tex(tex, logger):
         tex = tex.replace(old, new)
 
     # Insert references in tex
-    refsection = '\n'.join(text for sort, text in formatted_references)
-    print refsection
-    tex = AUTOBIB_SECTION_RE.sub('%autobib start\n' +
+    refsection = u'\n'.join(text for sort, text in formatted_references)
+    tex = AUTOBIB_SECTION_RE.sub(u'%autobib start\n' +
                                  refsection.replace('\\', '\\\\') +
-                                 '%autobib stop',
+                                 u'%autobib stop',
                                  tex)
     return tex
 
@@ -161,10 +162,10 @@ if __name__ == '__main__':
     parser.add_argument('texname', default=None)
     args = parser.parse_args()
     with file(args.texname) as f:
-        tex = f.read()
+        tex = f.read().decode('utf-8')
     tex = transform_tex(tex, logger)
     with file(args.texname, 'w') as f:
-        f.write(tex)
+        f.write(tex.encode('utf-8'))
 
 
 
