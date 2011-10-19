@@ -98,6 +98,17 @@ def scrape_AA(br, uri, response):
     assert_bibtex_contains('@article', bibtex)
     return bibtex
 
+@scraper('iopscience.iop.org')
+def scrape_ApJ(br, uri, response):
+    br.select_form(nr=3)
+    br['exportFormat'] = ['iopexport_bib']
+    response = br.submit('navsubmit')
+    bibtex = response.read()
+    assert_bibtex_contains('@article', bibtex)
+    return bibtex
+    
+    
+
 def fetch_bibtex_of_doi(uri):
     url = 'http://dx.doi.org/' + uri[len('doi:'):]
     br = mechanize.Browser()
