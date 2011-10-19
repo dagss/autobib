@@ -36,28 +36,40 @@ def massage_bibtex_string(bibtex):
     return bibtex
 
 def massage_bibtex_entry(entry):
-    if 'journal' not in entry.fields:
+    if 'journal' not in entry.fields and 'issn' in entry.fields:
         try:
             entry.fields['journal'] = issn_to_journal(entry.fields['issn'])
         except NotImplementedError:
             pprint(entry.fields)
             raise
-    if entry.fields['journal'] == 'A\\&A':
+    if entry.fields.get('journal', None) == 'A\\&A':
         entry.fields['number'] = entry.fields['pages']
         if len(entry.persons['author']) > 1:
             raise NotImplementedError(
                 'Please fix massage_bibtex_string for more than one author')
     if 'number' not in entry.fields:
-        entry.fields['number'] = entry.fields['issue']
+        if 'issue' in entry.fields:
+            entry.fields['number'] = entry.fields['issue']
     return entry
 
 class ApjFormatter(object):
     def format_author(self, author):
-        x = []
-        x.extend(author.last())
-        x.extend(author.first(abbr=True))
-        x.extend(author.middle(abbr=True))
-        return ', '.join(x)
+        letters = []
+        # First names can be either a full name, A.B., or A. B.
+        for x in author.first() + author.middle():
+            for y in x.split('.'):
+                y = y.strip()
+                if len(y) > 0:
+                    letters.append(y[0] + '.')
+        if len(author.last()) != 1:
+            raise NotImplementedError("Author list: %r" % author.last())
+        r = '%s, %s' % (author.last()[0], ' '.join(letters))
+        return r
+    
+
+def utf8_to_latex(s):
+    s = s.replace(u'ó', "\\'o")
+    return s
 
 def format_citation_apj(uri, tag):
     entry = fetch_reference(uri)
@@ -65,17 +77,30 @@ def format_citation_apj(uri, tag):
     formatter = ApjFormatter()
     authorlist = [formatter.format_author(a) for a in entry.persons['author']]
     assert len(authorlist) > 0
-    many_authors = len(authorlist) > 1
     if len(authorlist) > 1:
         authorlist[-1] = '\& %s' % authorlist[-1]
     authorlist_str = ', '.join(authorlist)
     fields = entry.fields
+
+    if len(authorlist) == 2:
+        citation = ' \& '.join([author.last()[0] for author in entry.persons['author']])
+    else:
+        citation = entry.persons['author'][0].last()[0]
+        if len(authorlist) > 1:
+            citation += ' et al.'
+
+    if 'journal' in fields:
+        number = ', ' + fields['number'] if 'number' in fields else ''
+        publication = '%s, %s%s' % (fields['journal'], fields['volume'], number)
+    else:
+        publication = fields['title']
+    
     lastname = entry.persons['author'][0].last()[0]
-    etal = ' et al.' if many_authors else ''
     sort_key = authorlist_str
-    return (sort_key, ('\\bibitem[{lastname}{etal}({fields[year]})]{{{tag}}}\n'
-             '  {authorlist_str} {fields[year]} {fields[journal]}, '
-             '{fields[volume]}, {fields[number]}\n').format(**locals()))
+    s = (u'\\bibitem[{citation}({fields[year]})]{{{tag}}}\n'
+         '  {authorlist_str} {fields[year]} {publication}\n').format(**locals())
+    s = utf8_to_latex(s)
+    return (sort_key, s)
     
 
 CITES_RE = re.compile(r'\\cite\S*{([^}]+)}', re.DOTALL)
