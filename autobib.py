@@ -107,21 +107,44 @@ CITES_RE = re.compile(r'\\cite\S*{([^}]+)}', re.DOTALL)
 #DOI_RE = re.compile(r'\cite\S*{doi:[^,}]*')
 AUTOBIB_SECTION_RE = re.compile(r'^%autobib start$.*^%autobib stop$',
                                 re.MULTILINE | re.DOTALL)
-AUTOBIB_CONFIG_RE = re.compile(r'^%autobib\s+(.*)$', re.MULTILINE)
+AUTOBIB_CONFIG_RE = re.compile(r'^%autobib (let)\s+(.*)$', re.MULTILINE)
+AUTOBIB_MANUAL_RE = re.compile(r'^%autobib manual start$(.*)^%autobib manual stop$',
+                                re.MULTILINE | re.DOTALL)
 
 def transform_tex(tex, logger):
     # Parse settings
     aliases = {}
-    for expr in AUTOBIB_CONFIG_RE.findall(tex):
-        expr = expr.strip()
-        if expr in ('start', 'stop'):
-            pass
-        elif expr.startswith('let '):
-            alias, uri = expr[4:].split('=')
+    for command, expr in AUTOBIB_CONFIG_RE.findall(tex):
+        if command == 'let':
+            alias, uri = expr.split('=')
             aliases[alias] = uri
         else:
             raise Exception("Invalid setting: %%autobib %s" % expr)
     reverse_aliases = dict((value, key) for key, value in aliases.iteritems())
+
+    # Scan for insertions -- that is, manual references that must be
+    # inserted in the right place alphabetically
+    insertions = []
+    current_insertion_lines = []
+    current_key = None
+    def commit_insertion():
+        if current_key is not None:
+            insertions.append((current_key, '\n'.join(current_insertion_lines) + '\n'))
+            del current_insertion_lines[:]
+    for expr in AUTOBIB_MANUAL_RE.findall(tex):
+        lines = expr.split('\n')
+        for line in lines:
+            line = line.strip()
+            if line == '':
+                continue
+            if not line.startswith(u'%'):
+                raise NotImplementedError("Insertion line does not start with %")
+            line = line[1:].strip()
+            if line.startswith(u'\\bibitem['):
+                commit_insertion()
+                current_key = line[len(u'\\bibitem['):]
+            current_insertion_lines.append(line)
+    commit_insertion()
 
     # Scan for journal references
     references = aliases.values()
@@ -159,7 +182,9 @@ def transform_tex(tex, logger):
         else:
             formatted_references.append((sort_key, citation))
 
+    formatted_references.extend(insertions)
     formatted_references.sort()
+
     
     # Do citation replacements
     for old, new in citation_replacements:
@@ -167,6 +192,10 @@ def transform_tex(tex, logger):
 
     # Insert references in tex
     refsection = u'\n'.join(text for sort, text in formatted_references)
+
+    if not AUTOBIB_SECTION_RE.search(tex):
+        raise Exception("No autobib section found in tex!")
+        
     tex = AUTOBIB_SECTION_RE.sub(u'%autobib start\n' +
                                  refsection.replace('\\', '\\\\') +
                                  u'%autobib stop',
