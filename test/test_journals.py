@@ -9,3 +9,7 @@ def test_AA():
     ok_('Libpsht' in bibtex)
     ok_('Reinecke' in bibtex)
 
+def test_ApJ():
+    bibtex = fetch_bibtex_of_uri('doi:10.1086/507692')
+    print bibtex
+    
