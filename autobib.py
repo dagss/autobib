@@ -53,6 +53,12 @@ def massage_bibtex_entry(entry):
     return entry
 
 class ApjFormatter(object):
+
+    journal_abbreviations = {
+        'Astron.Astrophys.' : 'A\&A',
+        'The Astrophysical Journal' : 'ApJ'
+        }
+    
     def format_author(self, author):
         letters = []
         # First names can be either a full name, A.B., or A. B.
@@ -65,7 +71,14 @@ class ApjFormatter(object):
             raise NotImplementedError("Author list: %r" % author.last())
         r = '%s, %s' % (author.last()[0], ' '.join(letters))
         return r
-    
+
+    def get_journal_name(self, entry):
+        if 'journal' not in entry.fields:
+            return None
+        journal = entry.fields['journal']
+        journal = self.journal_abbreviations.get(journal, journal)
+        print journal
+        return journal
 
 def utf8_to_latex(s):
     s = s.replace(u'ó', "\\'o")
@@ -89,11 +102,12 @@ def format_citation_apj(uri, tag):
         if len(authorlist) > 1:
             citation += ' et al.'
 
-    if 'journal' in fields:
-        number = ', ' + fields['number'] if 'number' in fields else ''
-        publication = '%s, %s%s' % (fields['journal'], fields['volume'], number)
-    else:
+    journal = formatter.get_journal_name(entry)
+    if journal is None:
         publication = fields['title']
+    else:
+        number = ',~' + fields['number'] if 'number' in fields else ''
+        publication = '%s,~%s%s' % (journal, fields['volume'], number)
     
     lastname = entry.persons['author'][0].last()[0]
     sort_key = authorlist_str
