@@ -62,13 +62,14 @@ def scrape_ieee(br, uri, response):
                  'download-format' : 'download-bibtex',
                  'x' : '63',
                  'y' : '10'}
-    f = urllib2.urlopen("http://ieeexplore.ieee.org/xpl/downloadCitations",
+    # Needs cookies, use br.open
+    response2 = br.open("http://ieeexplore.ieee.org/xpl/downloadCitations",
                         data=urllib.urlencode(post_data))
     try:
-        bibtex = f.read()
+        bibtex = response2.read()
     finally:
-        f.close()
-    1/0
+        response2.close()
+    bibtex = bibtex.replace('<br>', '')
     return bibtex
 
 @scraper('springerlink.com')
